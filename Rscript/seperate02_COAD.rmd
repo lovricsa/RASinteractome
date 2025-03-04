@@ -250,6 +250,7 @@ num_samples_min <- min(table(ras_data[ras_data$category2 %in% slist,]$category2)
 # now plot
 corr_list <- list()
 plot_list <- list()
+mac_list <- list()
 for (stype in c("Normal","All", "Tumor")){
   sel_samples <- 1:nrow(ras_data)
   if (stype=="Normal"){
@@ -267,6 +268,9 @@ for (stype in c("Normal","All", "Tumor")){
   corr <- round(cor(ras_data[sel_samples, indep_vars], 
                     use="pairwise.complete.obs",
                     method = "pearson"), digits=1)
+  # mean absolute correlation
+  #mac_list[[stype]] <- mean(abs(corr[lower.tri(corr, diag = FALSE)]))
+  mac_list[[stype]] <- length(which(abs(corr[lower.tri(corr, diag = FALSE)])>0.4))
   # #corr <- corr[hc$order, hc$order]
   # figfile <- file.path(cfigfolder, 
   #               paste("correlation_", stype, "_orig_order.pdf", sep=""))
@@ -285,7 +289,7 @@ for (stype in c("Normal","All", "Tumor")){
   corr_list[[stype]] <- corr
   plot_list[[stype]] <- p
 }
-
+print(mac_list)
 # write out to text file as well
 outfile <- file.path(resfolder, "correlation.xlsx")
 openxlsx2::write_xlsx(corr_list[c("All", "Normal_first", "Tumor")], outfile, rowNames=T)

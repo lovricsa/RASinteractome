@@ -312,7 +312,7 @@ calculate_double_gene_measures <- function(acc_file,
         lname <- paste(test_genes,collapse="+")
         it_model  <-  glm(as.formula(paste0("`", depvar, "`" ," ~ ",
                            paste(test_genes,collapse="+"))),
-                           data = ras_data, family = "binomial")
+                           data = indata, family = "binomial")
         acc_list[[lname]] <- runCV_LOOCV(indata, it_model, verbose=F,
                                         depvar=depvar,
                                         depvar_levels=depvar_levels,
@@ -334,6 +334,51 @@ calculate_double_gene_measures <- function(acc_file,
   return(all_measures)
 }
 
+##############x
+
+calculate_k_gene_measures <- function(acc_file,
+                                           k,
+                                           indep_vars,
+                                           indata,
+                                           depvar,
+                                           depvar_levels,
+                                           posclass){
+  n <- length(indep_vars)
+  if (!file.exists(acc_file)){
+    acc_list <- list()
+    aic_list <- list()
+    bic_list <- list()
+  for (i in 1:choose(n, k)){
+    if (i == 1){
+      cbn <- 1:k
+    } else{
+      cbn <- gen.next.cbn(cbn, n)
+    }
+    lname <- as.character(paste(indep_vars[cbn],collapse="+"))
+    it_model <-  glm(as.formula(paste0("`", depvar, "`" ," ~ ",
+                                       paste(indep_vars[cbn],collapse="+"))),
+                     data = indata, family = "binomial")
+    aic_list[[lname]] <- it_model$aic
+    bic_list[[lname]] <- BIC(it_model)
+    acc_list[[lname]] <- runCV_LOOCV(indata, it_model,
+                          depvar=depvar,
+                          depvar_levels=depvar_levels,
+                          posclass=posclass,
+                          return_conf_mx=F)
+    }
+    all_measures <- t(rbind(as.data.frame(acc_list),
+                            as.data.frame(aic_list),
+                            as.data.frame(bic_list)))
+    colnames(all_measures) <- c("balanced_accuracy", "aic", "bic")
+    all_measures <- as_tibble(all_measures, rownames = "genes")
+    saveRDS(all_measures, file=acc_file)
+  } else {
+    all_measures <- readRDS(acc_file)
+  }
+  return(all_measures)
+}
+
+###############################################################################
 
 print_confmx <- function(conf_mx, outfile, coefs=NULL){
   toappend <- F
@@ -356,4 +401,9 @@ print_confmx <- function(conf_mx, outfile, coefs=NULL){
   write.table(metrices, outfile, sep = ",", append = T, row.names = F)
 }
 
-
+significant_correlation_threshold <- function(n, alpha = 0.05) {
+  df <- n - 2  # Degrees of freedom
+  t_critical <- qt(1 - alpha / 2, df)  # Two-tailed t critical value
+  r_threshold <- sqrt(t_critical^2 / (t_critical^2 + df))  # Convert t to r
+  return(r_threshold)
+}
