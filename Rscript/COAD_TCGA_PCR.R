@@ -114,6 +114,7 @@ ras_both_long_tbl$gene <- factor(ras_both_long_tbl$gene, levels=pcr_genes)
 ##----find outliers with Rosner test---------------
 outlier_list <- list()
 plist <- list()
+p_all_list <- list()
 ras_tmp <- ras_both_scaled[["pcr"]]
 for (ctype in levels(ras_tmp$category_factor)){
   plist[[ctype]] <- list()
@@ -147,14 +148,21 @@ for (ctype in levels(ras_tmp$category_factor)){
   p <- plot_grid(plotlist = plist[[ctype]], 
                  ncol=colfigs,
                  align = 'vh', scale=0.8)
-  ggsave(figfile, plot=p,  width=7*colfigs, height=5*colfigs)
+  # ggsave(figfile, plot=p,  width=7*colfigs, height=5*colfigs)
+  p_all_list[[ctype]] <- p
 }
+# plot together
+p_all <- cowplot::plot_grid(plotlist=p_all_list, 
+                              ncol=1, labels=names(p_all_list))
+figfile <- file.path(figfolder, 
+                     paste(rtype, "_pcr_outliers_all.pdf", sep=""))
+ggsave(figfile, plot=p_all, height=5*8.3, width=11.7)
 
 # list outliers
 outlier_all <- names(unlist(outlier_list))
 outlier_all <- limma::strsplit2(outlier_all, split="\\.")[,2]
 
-## ----create boxplots and histograms for PCR genes only in both dataset----------------------------------------
+## ----create violinplots for PCR genes only in both dataset----------------------------------------
 
 # replace with proper use of facet_grid
 
@@ -168,54 +176,54 @@ ras_tmp$gene_experiment <- factor(ras_tmp$gene_experiment,
             levels=paste(rep(levels(ras_tmp$gene), each=2), 
                      rep(c("tcga", "pcr"), times=5), sep="_"))
 
-# define facet names
-facet_names <- levels(ras_tmp$gene_experiment)
-names(facet_names)  <- levels(ras_tmp$gene_experiment)
-for (ii in 1:length(facet_names)){
-  facet_names[ii] <- gsub("_", " ", toupper(facet_names[ii]), perl="fixed")
-}
-
-p <- ggplot(data=ras_tmp, aes(x=category_factor, y=expression, color=category_factor))+
-  # geom_violin(bw=0.3, trim=F)+
-  # geom_point(size=0.5, aes(x=category_factor, y=expression, color=category_factor),
-  #            position=position_jitterdodge(dodge.width = 0.9, jitter.width = 0.2))+
-  geom_violin(trim=F) +
-  geom_jitter(size=0.5, width = 0.2) +
-  #geom_boxplot(width=0.2)+
-  ylab("") + xlab("")+
-  guides(color=guide_legend(title=""))+
-  scale_color_manual("category", 
-                    values = c("Normal" = "black",
-                               "Tumor_Stage_I"="cyan",
-                               "Tumor_Stage_II"="purple",
-                               "Tumor_Stage_III"="pink",
-                               "Tumor_Stage_IV"="red"),
-                    labels= c("Normal" = "Normal",
-                              "Tumor_Stage_I"="Stage I",
-                              "Tumor_Stage_II"="Stage II",
-                              "Tumor_Stage_III"="Stage III",
-                              "Tumor_Stage_IV"="Stage IV"))+
-  scale_x_discrete(labels= c("Normal" = "Normal",
-                             "Tumor_Stage_I"="Stage I",
-                             "Tumor_Stage_II"="Stage II",
-                             "Tumor_Stage_III"="Stage III",
-                             "Tumor_Stage_IV"="Stage IV")) + 
-  theme(
-    #axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5),
-    axis.text.x = element_text(angle = 90),
-        legend.position="none",
-        axis.title=element_text(size=20),
-        panel.grid.minor=element_blank(),
-        panel.grid.major=element_blank(),
-        axis.text=element_text(size=16),
-        legend.text=element_text(size=16),
-        strip.text.x = element_text(size=12), # facet titles
-        panel.background=element_rect(fill="white", colour = "black"),
-        plot.background=element_rect(color="black"))+
-  #facet_grid(gene~experiment)
-  facet_wrap(~gene_experiment, ncol=2,
-             labeller = as_labeller(facet_names))
-plot(p)
+# # define facet names
+# facet_names <- levels(ras_tmp$gene_experiment)
+# names(facet_names)  <- levels(ras_tmp$gene_experiment)
+# for (ii in 1:length(facet_names)){
+#   facet_names[ii] <- gsub("_", " ", toupper(facet_names[ii]), perl="fixed")
+# }
+# 
+# p <- ggplot(data=ras_tmp, aes(x=category_factor, y=expression, color=category_factor))+
+#   # geom_violin(bw=0.3, trim=F)+
+#   # geom_point(size=0.5, aes(x=category_factor, y=expression, color=category_factor),
+#   #            position=position_jitterdodge(dodge.width = 0.9, jitter.width = 0.2))+
+#   geom_violin(trim=F) +
+#   geom_jitter(size=0.5, width = 0.2) +
+#   #geom_boxplot(width=0.2)+
+#   ylab("") + xlab("")+
+#   guides(color=guide_legend(title=""))+
+#   scale_color_manual("category", 
+#                     values = c("Normal" = "black",
+#                                "Tumor_Stage_I"="cyan",
+#                                "Tumor_Stage_II"="purple",
+#                                "Tumor_Stage_III"="pink",
+#                                "Tumor_Stage_IV"="red"),
+#                     labels= c("Normal" = "Normal",
+#                               "Tumor_Stage_I"="Stage I",
+#                               "Tumor_Stage_II"="Stage II",
+#                               "Tumor_Stage_III"="Stage III",
+#                               "Tumor_Stage_IV"="Stage IV"))+
+#   scale_x_discrete(labels= c("Normal" = "Normal",
+#                              "Tumor_Stage_I"="Stage I",
+#                              "Tumor_Stage_II"="Stage II",
+#                              "Tumor_Stage_III"="Stage III",
+#                              "Tumor_Stage_IV"="Stage IV")) + 
+#   theme(
+#     #axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=0.5),
+#     axis.text.x = element_text(angle = 90),
+#         legend.position="none",
+#         axis.title=element_text(size=20),
+#         panel.grid.minor=element_blank(),
+#         panel.grid.major=element_blank(),
+#         axis.text=element_text(size=16),
+#         legend.text=element_text(size=16),
+#         strip.text.x = element_text(size=12), # facet titles
+#         panel.background=element_rect(fill="white", colour = "black"),
+#         plot.background=element_rect(color="black"))+
+#   #facet_grid(gene~experiment)
+#   facet_wrap(~gene_experiment, ncol=2,
+#              labeller = as_labeller(facet_names))
+# plot(p)
 
 
 # also calculate p-values - 
@@ -238,17 +246,63 @@ stat.test <- stat.test %>%
   add_xy_position(x = "category_factor",
                   dodge = 0.8, step.increase = 0.06,)
 
-p_final <- p + stat_pvalue_manual(
-  stat.test,  label = "p.adj.signif", tip.length = 0.005
-)
-
-plot(p_final)
-outfig <- file.path(figfolder, "violinplot_with_stars.pdf")
-ggsave(outfig, plot=p_final, width=7, height=14)
+# p_final <- p + stat_pvalue_manual(
+#   stat.test,  label = "p.adj.signif", tip.length = 0.005
+# )
+# 
+# plot(p_final)
+# outfig <- file.path(figfolder, "violinplot_with_stars.pdf")
+# ggsave(outfig, plot=p_final, width=7, height=14)
 
 
 ##------------------------- old solution for violinplots with stars-------------
-# first use ANOVA to test between groups (normal & stages)
+# add gene and experiment to stat.test
+stat.test$gene <- limma::strsplit2(stat.test$gene_experiment, split="_")[,1]
+stat.test$experiment <- limma::strsplit2(stat.test$gene_experiment, split="_")[,2]
+# keep Normal vs StageI only
+stat.test <- stat.test[which(stat.test$group1 %in% c("Normal") &
+                               stat.test$group2 %in% c("Tumor_Stage_I")),]
+
+# Add p-values onto the box plots
+stat.test <- stat.test %>%
+  add_xy_position(x = "category_factor",
+                  dodge = 0.8, step.increase = 0.06,)
+# change y.position completely manually
+stat.test$y.position <- 4.5
+
+theme_tcga <- theme(axis.title.x=element_blank(),
+                    axis.text.x = element_text(angle = 45, vjust = 0.4, hjust=0.5),
+                    plot.margin = unit(c(0.05, 0.05, 0.3, 0.05), "inches"),
+                    legend.position="none",
+                    axis.title=element_text(size=20),
+                    panel.grid.minor=element_blank(),
+                    panel.grid.major=element_blank(),
+                    axis.text=element_text(size=16),
+                    legend.text=element_text(size=16),
+                    strip.text.x = element_text(size=12), # facet titles
+                    panel.background=element_rect(fill="white", colour = "black"),
+                    plot.background=element_rect(color="white"))
+  
+  
+theme_pcr <- theme(axis.title.x=element_blank(),
+                   axis.text.x = element_text(angle = 45, vjust = 0.4, hjust=0.5),
+                   plot.margin = unit(c(0.05, 0.05, 0.3, 0.05), "inches"),
+                   legend.position="none",
+                   axis.title=element_text(size=20),
+                   panel.grid.minor=element_blank(),
+                   panel.grid.major=element_blank(),
+                   axis.text=element_text(size=16),
+                   legend.text=element_text(size=16),
+                   strip.text.x = element_text(size=12), # facet titles
+                   panel.background=element_rect(fill="white", colour = "black"),
+                   plot.background=element_rect(color="white"),
+                   axis.title.y=element_blank(),
+                   axis.text.y=element_blank(),
+                   axis.ticks.y=element_blank())
+  
+
+
+
 plotlist <- list()
 for (rname in names(ras_both_scaled)){
   ras_tmp <- ras_both_scaled[[rname]][
@@ -258,15 +312,17 @@ for (rname in names(ras_both_scaled)){
   ras_tmp$category_factor <- droplevels(ras_tmp$category_factor)
   plotlist[[rname]] <- list()
   for (gene in pcr_genes){
-    stagelm <- lm(as.formula(paste0(gene, " ~ category_factor")), data=ras_tmp)
-    stageav <- aov(stagelm)
-    summary(stageav)
-    tukeydf <- as_tibble(TukeyHSD(stageav, conf.level=.95)$category_factor, 
-                         rownames="comparison")
-    tukeydf$p.signif <- stars.pval(tukeydf$`p adj`)
-    tukeydf$p.signif[tukeydf$p.signif==" "] <- "ns"
-    tukeydf$group1 <- limma::strsplit2(tukeydf$comparison, split="-")[,2]
-    tukeydf$group2 <- limma::strsplit2(tukeydf$comparison, split="-")[,1]
+    # stagelm <- lm(as.formula(paste0(gene, " ~ category_factor")), data=ras_tmp)
+    # stageav <- aov(stagelm)
+    # summary(stageav)
+    # tukeydf <- as_tibble(TukeyHSD(stageav, conf.level=.95)$category_factor, 
+    #                      rownames="comparison")
+    # tukeydf$p.signif <- stars.pval(tukeydf$`p adj`)
+    # tukeydf$p.signif[tukeydf$p.signif==" "] <- "ns"
+    # tukeydf$group1 <- limma::strsplit2(tukeydf$comparison, split="-")[,2]
+    # tukeydf$group2 <- limma::strsplit2(tukeydf$comparison, split="-")[,1]
+    
+    # use adjusted t-test value
     
     # TO DO - p values together, new colors, fehér háttér, facet_grid csillagokkal
     p1 <- ggplot(ras_tmp,
@@ -277,10 +333,10 @@ for (rname in names(ras_both_scaled)){
       geom_boxplot(width=0.2)+
       scale_color_manual("category",
                          values = c("Normal" = "black",
-                                    "Tumor_Stage_I"="cyan",
-                                    "Tumor_Stage_II"="purple",
-                                    "Tumor_Stage_III"="pink",
-                                    "Tumor_Stage_IV"="red"),
+                                    "Tumor_Stage_I"=stage1col,
+                                    "Tumor_Stage_II"=stage2col,
+                                    "Tumor_Stage_III"=stage3col,
+                                    "Tumor_Stage_IV"=stage4col),
                          labels= c("Normal" = "Normal",
                                    "Tumor_Stage_I"="Stage I",
                                    "Tumor_Stage_II"="Stage II",
@@ -288,26 +344,37 @@ for (rname in names(ras_both_scaled)){
                                    "Tumor_Stage_IV"="Stage IV"))+
       xlab("") + ylab(gene)+ guides(colour="none") + ylim(-6, 6)+
       scale_x_discrete(labels=c("Normal", "Stage_I", "Stage_II", 
-                                "Stage_III", "Stage_IV"))+
-      theme(axis.title.x=element_blank(),
-            axis.text.x = element_text(angle = 45, vjust = 0.4, hjust=1),
-            plot.margin = unit(c(0.05, 0.05, 0.3, 0.05), "inches"))
-    y.position <- 4.5
+                                "Stage_III", "Stage_IV"))
+    if (rname=="tcga") p1 <- p1 + theme_tcga
+    if (rname=="pcr") p1 <- p1 + theme_pcr
+      
+      
+    
+    #y.position <- 4.5
     # testtbl <- as_tibble(list("group1"="Normal", "group2"="Tumor",
     #                           "p"=stars.pval(tres$p.value), "y.position"=y.position))
-    testtbl <- tukeydf[1,]
-    colnames(testtbl)[colnames(testtbl)=="p.signif"] <- "p"
-    testtbl$y.position <- y.position
+    # testtbl <- tukeydf[1,]
+    # colnames(testtbl)[colnames(testtbl)=="p.signif"] <- "p"
+    # testtbl$y.position <- y.position
+    # 
+    # p2 <- p1+ stat_pvalue_manual(testtbl)
+    # plotlist[[rname]][[gene]] <- p2
     
-    p2 <- p1+ stat_pvalue_manual(testtbl)
+    p2 <- p1+ stat_pvalue_manual(
+      stat.test[which(stat.test$gene==gene & stat.test$experiment==rname),],  
+      label = "p.adj.signif", tip.length = 0.05)
     plotlist[[rname]][[gene]] <- p2
   }
 }
 p_tcga <- cowplot::plot_grid(plotlist=plotlist[["tcga"]], ncol=1)
 p_pcr <- cowplot::plot_grid(plotlist=plotlist[["pcr"]], ncol=1)
-p_all <- cowplot::plot_grid(p_tcga, p_pcr, ncol=2)
-outfig <- file.path(figfolder, "violinplot_stages_with_stars.pdf")
+p_all <- cowplot::plot_grid(p_tcga, p_pcr, ncol=2, 
+                            rel_widths = c(1.25,1))
+plot(p_all)
+outfig <- file.path(figfolder, "violinplot_pcrgenes_stages_with_stars.pdf")
 ggsave(outfig, plot=p_all, width=7, height=14)
+outfig2 <- file.path(figfolder, "violinplot_pcrgenes_stages_with_stars.tiff")
+ggsave(outfig2, plot=p_all, width=7, height=14, dpi=600)
 
 # t-test
 pvalue_list <- list()
@@ -379,8 +446,6 @@ ggsave(outfig, plot=p_all, width=7, height=14)
 
 ## ----correlation---------------------------------------------------------------------------------------------
 # correlation plots with legend without "cor"
-
-set.seed(1004)
 cfigfolder <- file.path(figfolder, "correlation")
 if (!file.exists(cfigfolder)) dir.create(cfigfolder)
 
@@ -419,7 +484,7 @@ for (rname in names(ras_both_scaled)){
     figfile <- file.path(cfigfolder, 
                          paste("correlation_pcr_genes_only_", 
                                rname, "_", stype, "_hc_order.pdf", sep=""))
-    p <- ggcorrplot(corr, lab=T,
+    p <- ggcorrplot(corr, lab=T, legend.title = "",
                     method="circle", type="upper",
                     hc.order = F, sig.level=0.1, lab_size = 3,
                     colors = c("#234387", "white", "#b81007"),
@@ -427,6 +492,21 @@ for (rname in names(ras_both_scaled)){
     ggsave(figfile, plot=p, height=3, width=2.7)
     # store in list
     corr_list[[rname]][[stype]] <- corr
+    
+    # and save once with legend as well
+    p <- ggcorrplot(corr, lab=T, legend.title = "",
+                    method="circle", type="upper",
+                    hc.order = F, sig.level=0.1, lab_size = 3,
+                    colors = c("#234387", "white", "#b81007"),
+                    show.legend = T)
+    figfile <- file.path(cfigfolder, 
+                         paste("correlation_pcr_genes_only_", 
+                               rname, "_", stype, "_hc_order_withlegend.pdf", sep=""))
+    ggsave(figfile, plot=p, height=3, width=2.7)
+    figfile <- file.path(cfigfolder, 
+                         paste("correlation_pcr_genes_only_", 
+                               rname, "_", stype, "_hc_order_withlegend.tiff", sep=""))
+    ggsave(figfile, plot=p, height=3, width=2.7, dpi=600)
     
     # #also for the new type figure
     # corr <- round(corr, digits=2)
@@ -439,16 +519,6 @@ for (rname in names(ras_both_scaled)){
     # ggsave(outfig, plot=p, height=3, width=2.7)
   } # loop for stype
 } # loop for rname
-
-plot_corrs <- cowplot::plot_grid(plot_list[["tcga"]][["Normal"]],
-                                 plot_list[["pcr"]][["Normal"]],
-                                 plot_list[["tcga"]][["Tumor"]],
-                                 plot_list[["pcr"]][["Tumor"]],
-                                 ncol=2,
-                                 labels = c("TCGA Normal", "PCR Normal",
-                                                   "TCGA Tumor", "PCR Tumor"))
-outfig <- file.path(figfolder, "correlation_tcga_pcr_together.pdf")
-ggsave(outfig, plot=plot_corrs, height=5, width=6)
 
 # repeat for stages
 corr_list <- list()
@@ -484,7 +554,7 @@ for (rname in names(ras_both_scaled)){
     figfile <- file.path(cfigfolder, 
                          paste("correlation_pcr_genes_only_", 
                                rname, "_", ctype, "_hc_order.pdf", sep=""))
-    p <- ggcorrplot(corr, lab=T,
+    p <- ggcorrplot(corr, lab=T, legend.title = "",
                     method="circle", type="upper",
                     hc.order = F, sig.level=0.1, lab_size = 3,
                     colors = c("#234387", "white", "#b81007"),
@@ -496,7 +566,7 @@ for (rname in names(ras_both_scaled)){
     
     
     # and save once with legend as well
-    p <- ggcorrplot(corr, lab=T,
+    p <- ggcorrplot(corr, lab=T, legend.title = "",
                     method="circle", type="upper",
                     hc.order = F, sig.level=0.1, lab_size = 3,
                     colors = c("#234387", "white", "#b81007"),
@@ -505,6 +575,10 @@ for (rname in names(ras_both_scaled)){
                          paste("correlation_pcr_genes_only_", 
                                rname, "_", ctype, "_hc_order_withlegend.pdf", sep=""))
     ggsave(figfile, plot=p, height=3, width=2.7)
+    figfile <- file.path(cfigfolder, 
+                         paste("correlation_pcr_genes_only_", 
+                               rname, "_", ctype, "_hc_order_withlegend.tiff", sep=""))
+    ggsave(figfile, plot=p, height=3, width=2.7, dpi=600)
     
     # #also for the new type figure
     # corr <- round(corr, digits=2)
@@ -517,10 +591,6 @@ for (rname in names(ras_both_scaled)){
     # ggsave(outfig, plot=p, height=3, width=2.7)
   } # loop for stype
 } # loop for rname
-
-
-
-## ------------TO DO: OUTLIER DETECTION!!!----------------------
 
 
 ## ----LDA normal or tumor-------------------------------------------------------------------------------------
@@ -634,10 +704,10 @@ pfinal <- ggplot(data=lda_pcr) +
         panel.grid.minor = element_blank(),
         panel.background=element_rect(fill="white", colour = "black"))
 plot(pfinal)
-outfig <- file.path(figfolder, 
-                    #paste("ras_lda_tcga_plus_pcr_",  "normal_stageI_stageIV_pcronly.pdf", sep=""))
-                 paste("ras_lda_tcga_space_pcr_",  "samples.pdf", sep=""))
+outfig <- file.path(figfolder, "ras_lda_tcga_space_pcr_samples.pdf")
 ggsave(outfig, plot=pfinal, width=7, height=5)
+outfig <- file.path(figfolder, "ras_lda_tcga_space_pcr_samples.tiff")
+ggsave(outfig, plot=pfinal, width=7, height=5, dpi=600)
 
 # plot LD1 density plot
 lda_tmp <- lda_pcr
@@ -664,8 +734,10 @@ p <- ggplot(data=lda_tmp, mapping=aes(x=LD1, color=category_factor))+
         panel.background=element_rect(fill="white", colour = "black"))
 
 plot(p)
-outfig <- file.path(figfolder,  "ras_pcr_LD1_density_categories.pdf")
+outfig <- file.path(figfolder,"ras_pcr_LD1_density_categories.pdf")
 ggsave(outfig, plot=p, width=7, height=5)
+outfig <- file.path(figfolder,"ras_pcr_LD1_density_categories.tiff")
+ggsave(outfig, plot=p, width=7, height=5, dpi=600)
 
 p <- ggplot(data=lda_tmp, mapping=aes(x=LD2, color=category_factor))+
   geom_density(fill="white",  alpha=0.25, linewidth=2)+
@@ -734,8 +806,7 @@ pfinal <- ggplot(data=lda_annot) +
         panel.grid.minor = element_blank(),
         panel.background=element_rect(fill="white", colour = "black"))
 plot(pfinal)
-outfig <- file.path(figfolder, 
-    paste("ras_lda_tcga_plus_pcr_",  "normal_stageI_stageIV.pdf", sep=""))
+outfig <- file.path(figfolder, "ras_lda_tcga_plus_pcr_normal_stageI_stageIV.pdf")
 ggsave(outfig, plot=pfinal, width=7, height=5)
   
   
@@ -1025,15 +1096,19 @@ for (comparison_index in c(2)){
       
       plotlist[[k]] <- ggplot(indata, aes(x = balanced_accuracy, y = genes)) +
         #geom_col(fill = "gray70") +
-        geom_col(aes(fill = barcolor), color="black", width = 0.8) +
-        scale_fill_manual("category",
-                          values = c("#d4d4d4" = "#d4d4d4",
-                                     "#CD3232"="#CD3232",
-                                     "#33ce33"="#33ce33"))+
+        #geom_col(aes(fill = barcolor), color="black", width = 0.8) +
+        geom_col(fill = "white", color="black", width = 0.8) +
+        # scale_fill_manual("category",
+        #                   values = c("#d4d4d4" = "#d4d4d4",
+        #                              "#CD3232"="#CD3232",
+        #                              "#33ce33"="#33ce33"))+
         ## add percentage labels
-        geom_text(aes(label = genes, x=0.2), nudge_x = -0.05) +
-        # geom_vline(xintercept=0.95, color="red")+
-        #scale_x_continuous(breaks= seq(0.2, 0.8, by = 0.2)) +
+        # geom_text(aes(label = genes, x=0.2), nudge_x = -0.05) +
+        geom_text(aes(label = genes, x=0.02, color=barcolor), hjust=0) +
+        scale_color_manual("category",
+                           values = c("#d4d4d4" = "black",
+                                      "#CD3232"="#CD3232",
+                                      "#33ce33"="#33ce33"))+
         # add accuracy values
         geom_text(aes(label = '-', x=balanced_accuracy, hjust=0)) +
         geom_text(aes(label = '-', x=balanced_accuracy, hjust=1)) +
@@ -1142,6 +1217,37 @@ for (comparison_index in c(2)){
   }
 }
 
+##----confusion matrices------------------------------------
+
+comptype_vector <- c("normal_vs_tumor", "normal_vs_stageI", 
+                     "stageI_vs_stageIV")
+depvar_vector <- c("sample_type_factor", "category_factor", "category_factor")
+depvar_levels_list <- list(c("Normal", "Tumor"),
+                           c("Normal", "Tumor_Stage_I"),
+                           c("Tumor_Stage_I", "Tumor_Stage_IV"))
+ci <- 2
+for (rname in names(ras_both_scaled)){
+  ras_tmp <- ras_both_scaled[[rname]][ras_both_scaled[[rname]][[depvar]]
+                                      %in%  depvar_levels,
+                                      c(pcr_genes, depvar)]
+  ras_tmp[[depvar]] <- droplevels(ras_tmp[[depvar]])
+  ras_data$category_factor <- droplevels(ras_data$category_factor)
+  it_model <-  glm(as.formula(paste0("`", depvar_vector[ci], "`" ," ~ ",
+                                     paste(pcr_genes,collapse="+"))),
+                   data = ras_tmp, family = "binomial")
+  
+  conf_mx <- runCV_LOOCV(ras_tmp, it_model,
+                  depvar=depvar_vector[ci],
+                  depvar_levels=depvar_levels_list[[ci]],
+                  posclass=depvar_levels_list[[ci]][2],
+                  return_conf_mx=T)
+  print(rname)
+  print(conf_mx$table)
+  print("##############")
+  outfile <- file.path(resfolder,
+      paste(rname, "model_pcr_genes_", comptype_vector[ci], ".csv", sep=""))
+  print_confmx(conf_mx, outfile)
+}
 
 
 ## ----double gene balanced accuracy stageI vs stageIV---------------------------------------------------------
