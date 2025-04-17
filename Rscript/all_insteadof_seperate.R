@@ -3,27 +3,26 @@ knitr::opts_chunk$set(message=FALSE, warnings=FALSE, fig.width=12, fig.height=5)
 
 
 ## ----libraries-----------------------------------------------------------------------------------------------
-library(readxl) # another package to read xls files
+#library(readxl) # another package to read xls files
 library(dplyr)
 library(tidyr) # to transform data for ggplot2 plots
 library(data.table) # while I use tibble mostly, fread is best input option
 library(tibble)
 library(ggplot2) # for visualization
-library(EnvStats) # for statistic tests
+library(EnvStats) # for statistic tests (i.e. Rosner test)
 library(ggcorrplot) # for nice correlation plots
 library(cowplot) # to plot q-q plots in a grid
 library(gtools) # specifically to generate stars from significance values
 library(caret) # for Classification And REgression Training
-library(pROC) # to easily plot ROC curves
 library(limma) # for the strsplit2 function
 library(gridExtra) # to plot a list of figures in a grid, also for multipage pdf
-library(ggpubr) # for the same purpose to arrange figures in a grid and also for significance stars
+#library(ggpubr) # for the same purpose to arrange figures in a grid and also for significance stars
 library(arsenal) # Functions for Large-Scale Statistical Summaries
-library(dr4pl) # for ROUT outlier finding
-library(gridGraphics) # Functions to convert a page of plots drawn with the 'graphics' package into identical output drawn with the 'grid' package
+#library(dr4pl) # for ROUT outlier finding
+#library(gridGraphics) # Functions to convert a page of plots drawn with the 'graphics' package into identical output drawn with the 'grid' package
 library(ggpubr) # Add manually p-values to a ggplot
-library(rstatix) # Autocompute P-value Positions For Plotting Significance
-library(factoextra) # to plot elbow plot for PCA eigenvalues
+library(rstatix) # Autocompute P-value Positions For Plotting Significance & convert p-values to stars
+#library(factoextra) # to plot elbow plot for PCA eigenvalues
 
 
 ## ----folders-------------------------------------------------------------------------------------------------
@@ -46,8 +45,6 @@ stage2col <- "#b5d6d6"
 stage3col <- "#ceb5b7"
 stage4col <- "#F320FA"
 
-
-# TO DO: define ras_theme
 
 ## ----read data for each cancer type---------------------------------------------------------------------------------------------
 # rtype <- "COAD"
@@ -774,192 +771,78 @@ for (ci in c(1:2)){
 
 
 
-# # repeat for Normal vs type I
-# corr_list <- list()
-# plot_list <- list()
+
+# ##-----create violinplots of gene expressions of different stages--------##
+# 
+# plotlist <- list()
 # for (rtype in c("COAD", "LUAD", "LUSC")){
-#   ras_data <- ras_data_list[[rtype]]
-#   set.seed(1004)
-#   cfigfolder <- file.path(figfolder, rtype, "correlation")
-#   if (!file.exists(cfigfolder)) dir.create(cfigfolder)
-#   # plot correlation among the variables
-#   # do it for all samples, tumor samples and normal samples
-#   # order always as would be for normal
-#   corr <- round(cor(ras_data[which(ras_data$sample_type2=="Normal"), indep_vars], 
-#                     use="pairwise.complete.obs",
-#                     method = "spearman"), digits=2)
-#   # order by the "Normal samples clustering
-#   hc <- hclust(dist(corr), method="ward.D2")
-#   # use the number of samples that are minimal in the stages
-#   slist <- setdiff(unique(ras_data$category2), "Tumor_Stage_X")
-#   # num_samples_min <- min(table(ras_data[ras_data$category2 %in% slist,]$category2))
-#   num_samples_min <- 40
-#   # 
-#   corr_list[[rtype]] <- list()
-#   plot_list[[rtype]] <- list()
-#   for (stype in c("Normal", "Tumor_Stage_I")){
-#     sel_samples <- 1:nrow(ras_data)
-#     if (stype=="Normal"){
-#       sel_samples <- which(ras_data$category2=="Normal")
-#       #sel_samples <- sample(sel_samples, size=num_samples_min)
-#     }
-#     if (stype=="Tumor_Stage_I"){
-#       sel_samples <- which(ras_data$category2=="Tumor_Stage_I")
-#       #sel_samples <- sample(sel_samples, size=num_samples_min)
-#     }
-#     corr <- round(cor(ras_data[sel_samples, indep_vars], 
-#                       use="pairwise.complete.obs",
-#                       method = "pearson"), digits=2)
-#     # p <- ggcorrplot(corr[hc$order, hc$order], method="circle", type="upper",
-#     #                 hc.order = F, sig.level=0.1, lab=T, lab_size = 1.2)
-#     p <- ggcorrplot(corr[hc$order, hc$order], method="circle", type="upper",
-#                     hc.order = F, sig.level=0.1, lab=T, lab_size = 1.2,
-#                     colors = c("#234387", "white", "#b81007"),
-#                     show.legend = F,
-#                     legend.title = "")
-#     # mean absolute correlation
-#     corr_list[[rtype]][[stype]] <- unlist(corr[lower.tri(corr, diag = FALSE)])
-#     plot_list[[rtype]][[stype]] <- p
-#     # also save each figure separately
-#     outfig <- file.path(cfigfolder, 
-#                         paste(rtype, "_correlation_",  stype, ".pdf", sep=""))
-#     ggsave(outfig, plot=p, height=10, width=9)
+#   ras_data <- ras_scaled_list[[rtype]]
+#   ras_tmp <- ras_scaled_list[[rtype]][
+#     ras_scaled_list[[rtype]]$category_factor %in% 
+#       c("Normal", "Tumor_Stage_I", "Tumor_Stage_II", 
+#         "Tumor_Stage_III", "Tumor_Stage_IV"),]
+#   ras_tmp$category_factor <- droplevels(ras_tmp$category_factor)
+#   ras_tmp$category_factor <- factor(ras_tmp$category_factor, levels=
+#                                       c("Normal", "Tumor_Stage_I", "Tumor_Stage_II", 
+#                                         "Tumor_Stage_III", "Tumor_Stage_IV"))
+#   plotlist[[rtype]] <- list()
+#   for (gene in indep_vars){
+#     stagelm <- lm(as.formula(paste0(gene, " ~ category_factor")), data=ras_tmp)
+#     stageav <- aov(stagelm)
+#     summary(stageav)
+#     tukeydf <- as_tibble(TukeyHSD(stageav, conf.level=.95)$category_factor, 
+#                          rownames="comparison")
+#     tukeydf$p.signif <- stars.pval(tukeydf$`p adj`)
+#     tukeydf$p.signif[tukeydf$p.signif==" "] <- "ns"
+#     tukeydf$group1 <- limma::strsplit2(tukeydf$comparison, split="-")[,2]
+#     tukeydf$group2 <- limma::strsplit2(tukeydf$comparison, split="-")[,1]
 #     
-#     # and save once with legend as well
-#     p <- ggcorrplot(corr[hc$order, hc$order], method="circle", type="upper",
-#                     hc.order = F, sig.level=0.1, lab=T, lab_size = 1.2,
-#                     colors = c("#234387", "white", "#b81007"),
-#                     show.legend = T,
-#                     legend.title = "")
-#     outfig <- file.path(cfigfolder, 
-#                         paste(rtype, "_correlation_",  stype, "_with_legend.pdf", sep=""))
-#     ggsave(outfig, plot=p, height=10, width=9)
-#   } # loop for stype
-# } # loop for rtype
-
-
-# # now create connections plots
-# num_connections <- list()
-# mean_connections <- list()
-# for (rtype in names(corr_list)){
-#   mean_connections[[rtype]][["Normal"]] <- mean(
-#     abs(corr_list[[rtype]][["Normal"]]))
-#   mean_connections[[rtype]][["Tumor_Stage_I"]] <- mean(
-#     abs(corr_list[[rtype]][["Tumor_Stage_I"]]))
-#   num_connections[[rtype]] <- list()
-#   for (thr in seq(from=0.2, to=0.9, by=0.05)){
-#     num_norm <- length(which(
-#       abs(corr_list[[rtype]][["Normal"]])>=thr))
-#     num_tum <- length(which(
-#       abs(corr_list[[rtype]][["Tumor_Stage_I"]])>=thr))
-#     num_diff <- num_norm - num_tum
-#     num_connections[[rtype]][[as.character(thr)]] <- num_diff
+#     p1 <- ggplot(ras_tmp,
+#                  aes(x=category_factor, y=.data[[gene]], 
+#                      colour = category_factor)) +
+#       geom_violin(trim=F) +
+#       geom_jitter(size=0.5) +
+#       geom_boxplot(width=0.2)+
+#       scale_color_manual("category",
+#                          values = c("Normal" = "black",
+#                                     "Tumor_Stage_I"="cyan",
+#                                     "Tumor_Stage_II"="purple",
+#                                     "Tumor_Stage_III"="pink",
+#                                     "Tumor_Stage_IV"="red"),
+#                          labels= c("Normal" = "Normal",
+#                                    "Tumor_Stage_I"="Stage I",
+#                                    "Tumor_Stage_II"="Stage II",
+#                                    "Tumor_Stage_III"="Stage III",
+#                                    "Tumor_Stage_IV"="Stage IV"))+
+#       xlab("") + ylab(gene)+ guides(colour="none") + 
+#       ylim(-6, 6)+
+#       #ylim(-11, 6)+
+#       # scale_x_discrete(labels=c("Normal", "Stage I", "Stage II", 
+#       #                           "Stage III", "Stage IV"))+
+#       scale_x_discrete(labels=c("", "", "", "", ""))+
+#       theme(axis.title.x=element_blank(),
+#             axis.text.x = element_text(angle = 45, vjust = 0.4, hjust=1),
+#             plot.margin = unit(c(0.05, 0.05, 0.3, 0.05), "inches"))
+#     y.position <- 4.5
+#     # testtbl <- as_tibble(list("group1"="Normal", "group2"="Tumor",
+#     #                           "p"=stars.pval(tres$p.value), "y.position"=y.position))
+#     testtbl <- tukeydf[1,]
+#     colnames(testtbl)[colnames(testtbl)=="p.signif"] <- "p"
+#     testtbl$y.position <- y.position
+#     
+#     p2 <- p1+ stat_pvalue_manual(testtbl)
+#     plotlist[[rtype]][[gene]] <- p2
+#     # plot to see warnings
+#     tt <- tryCatch(plot(p2),error=function(e) e, warning=function(w) w)
+#     if(is(tt,"warning")){
+#       print(paste("warning in plot: ", rtype, ", ", gene, sep=""))
+#     }
 #   }
-#   num_connections[[rtype]] <- unlist(num_connections[[rtype]])
+#   p_all <- cowplot::plot_grid(plotlist=plotlist[[rtype]], ncol=11)
+#   outfig <- file.path(figfolder, rtype, 
+#                       paste("tcga_", rtype, "violinplot_stages_with_stars.pdf", sep=""))
+#   ggsave(outfig, plot=p_all, width=28, height=14)
 # }
-# num_connections_df <- as_tibble(as.data.frame(num_connections), rownames="threshold")
-# num_longer <- pivot_longer(num_connections_df, names_to="cancer_type", 
-#                            values_to="lost_connections", cols=!threshold)
-# num_longer$cancer_type <- factor(num_longer$cancer_type)
-# num_longer$threshold <- as.numeric(num_longer$threshold)
-# p <- ggplot(data=num_longer, mapping=aes(x=threshold, y=lost_connections,
-#                                          color = cancer_type))+
-#   geom_line() + geom_point()+
-#   guides(color  = guide_legend(position = "inside")) +
-#   theme(legend.title=element_blank(), # legend title not needed
-#         legend.justification.top = "left",
-#         legend.justification.left = "top",
-#         legend.justification.bottom = "right",
-#         legend.justification.inside = c(0.95, 0.95),
-#         legend.location = "plot",
-#         plot.background=element_rect(color="grey"),
-#         axis.text=element_text(size=16),
-#         axis.title=element_text(size=20))+
-#   ylab("lost connections") + xlab("Pearson correlation threshold")
-# plot(p)
-# figfile <- file.path(figfolder, "correlation_lost_connections_normal_vs_stageI.pdf")
-# ggsave(figfile, plot=p, width=5, height=4)
-
-
-
-##-----create violinplots of gene expressions of different stages--------##
-# minden plotnál legyen x tengely felirat,
-# ne legyen ábra cím (fehér háttér plusz megfelelő színek)
-# y tengelyfelirat meg csak egyszer (gén nevek)
-
-# TO DO: violinplots with p-stars
-# normal vs tumor (fekete és piros) 
-# stages, significance: normal vs stage1 & stage1 vs stage4
-# ugyanolyan színek
-plotlist <- list()
-for (rtype in c("COAD", "LUAD", "LUSC")){
-  ras_data <- ras_scaled_list[[rtype]]
-  ras_tmp <- ras_scaled_list[[rtype]][
-    ras_scaled_list[[rtype]]$category_factor %in% 
-      c("Normal", "Tumor_Stage_I", "Tumor_Stage_II", 
-        "Tumor_Stage_III", "Tumor_Stage_IV"),]
-  ras_tmp$category_factor <- droplevels(ras_tmp$category_factor)
-  ras_tmp$category_factor <- factor(ras_tmp$category_factor, levels=
-                                      c("Normal", "Tumor_Stage_I", "Tumor_Stage_II", 
-                                        "Tumor_Stage_III", "Tumor_Stage_IV"))
-  plotlist[[rtype]] <- list()
-  for (gene in indep_vars){
-    stagelm <- lm(as.formula(paste0(gene, " ~ category_factor")), data=ras_tmp)
-    stageav <- aov(stagelm)
-    summary(stageav)
-    tukeydf <- as_tibble(TukeyHSD(stageav, conf.level=.95)$category_factor, 
-                         rownames="comparison")
-    tukeydf$p.signif <- stars.pval(tukeydf$`p adj`)
-    tukeydf$p.signif[tukeydf$p.signif==" "] <- "ns"
-    tukeydf$group1 <- limma::strsplit2(tukeydf$comparison, split="-")[,2]
-    tukeydf$group2 <- limma::strsplit2(tukeydf$comparison, split="-")[,1]
-    
-    p1 <- ggplot(ras_tmp,
-                 aes(x=category_factor, y=.data[[gene]], 
-                     colour = category_factor)) +
-      geom_violin(trim=F) +
-      geom_jitter(size=0.5) +
-      geom_boxplot(width=0.2)+
-      scale_color_manual("category",
-                         values = c("Normal" = "black",
-                                    "Tumor_Stage_I"="cyan",
-                                    "Tumor_Stage_II"="purple",
-                                    "Tumor_Stage_III"="pink",
-                                    "Tumor_Stage_IV"="red"),
-                         labels= c("Normal" = "Normal",
-                                   "Tumor_Stage_I"="Stage I",
-                                   "Tumor_Stage_II"="Stage II",
-                                   "Tumor_Stage_III"="Stage III",
-                                   "Tumor_Stage_IV"="Stage IV"))+
-      xlab("") + ylab(gene)+ guides(colour="none") + 
-      ylim(-6, 6)+
-      #ylim(-11, 6)+
-      # scale_x_discrete(labels=c("Normal", "Stage I", "Stage II", 
-      #                           "Stage III", "Stage IV"))+
-      scale_x_discrete(labels=c("", "", "", "", ""))+
-      theme(axis.title.x=element_blank(),
-            axis.text.x = element_text(angle = 45, vjust = 0.4, hjust=1),
-            plot.margin = unit(c(0.05, 0.05, 0.3, 0.05), "inches"))
-    y.position <- 4.5
-    # testtbl <- as_tibble(list("group1"="Normal", "group2"="Tumor",
-    #                           "p"=stars.pval(tres$p.value), "y.position"=y.position))
-    testtbl <- tukeydf[1,]
-    colnames(testtbl)[colnames(testtbl)=="p.signif"] <- "p"
-    testtbl$y.position <- y.position
-    
-    p2 <- p1+ stat_pvalue_manual(testtbl)
-    plotlist[[rtype]][[gene]] <- p2
-    # plot to see warnings
-    tt <- tryCatch(plot(p2),error=function(e) e, warning=function(w) w)
-    if(is(tt,"warning")){
-      print(paste("warning in plot: ", rtype, ", ", gene, sep=""))
-    }
-  }
-  p_all <- cowplot::plot_grid(plotlist=plotlist[[rtype]], ncol=11)
-  outfig <- file.path(figfolder, rtype, 
-                      paste("tcga_", rtype, "violinplot_stages_with_stars.pdf", sep=""))
-  ggsave(outfig, plot=p_all, width=28, height=14)
-}
 
 
 ## ----LDA (Figure 3) stages but use Normal and Stages I and IV only for prediction---------------------------------------
@@ -1677,48 +1560,3 @@ plot_BH <- plot_grid(plotlist=violinplot_list_BH, ncol=1,
 outfig <- file.path(figfolder, "violinplot_normal_vs_tumor_with_ttest_BH.pdf")
 ggsave(outfig, plot=plot_BH, height = 2*3*8.3, width=2*11.7)
 
-
-
-
-
-# ## ----calculate anova for stages------------------------------------------------------------------------------
-# ras_tmp <- ras_data[ras_data$category2 %in% 
-#                       c("Normal", "Tumor_Stage_I", "Tumor_Stage_IV"),]
-# plotlist <- list()
-# for (gene in indep_vars){
-#   stagelm <- lm(as.formula(paste0(gene, " ~ category_factor")), data=ras_tmp)
-#   stageav <- aov(stagelm)
-#   summary(stageav)
-#   tukeydf <- as_tibble(TukeyHSD(stageav, conf.level=.95)$category_factor, 
-#                        rownames="comparison")
-#   tukeydf$p.signif <- stars.pval(tukeydf$`p adj`)
-#   tukeydf$p.signif[tukeydf$p.signif==" "] <- "ns"
-#   tukeydf$group1 <- limma::strsplit2(tukeydf$comparison, split="-")[,2]
-#   tukeydf$group2 <- limma::strsplit2(tukeydf$comparison, split="-")[,1]
-#   
-#   # use Tukey later, but test with the example given
-#   # tmpdf <- compare_means(as.formula(paste0(gene, " ~ category_factor")), 
-#   #                        data=ras_tmp)
-#   my_comparisons <- list( c("Normal", "Tumor_Stage_I"), 
-#                           c("Normal", "Tumor_Stage_IV"), 
-#                           c("Tumor_Stage_I", "Tumor_Stage_IV") )
-#   # set y positions on top of highest notch
-#   p1 <- ggplot(data=ras_tmp)+
-#     geom_boxplot(mapping=aes(x=category_factor, y=.data[[gene]]))+
-#     scale_x_discrete(labels=c("Normal","Stage I","Stage IV"))+
-#     theme(axis.title.x=element_blank(),
-#           axis.text.x = element_text(angle = 45, vjust = 0.4, hjust=1),
-#           plot.margin = unit(c(0.05, 0.05, 0.3, 0.05), 
-#                                 "inches"))
-#   ymax <- median(ras_tmp[[gene]]) + 2 * IQR(ras_tmp[[gene]])
-#   ymin <- median(ras_tmp[[gene]]) - 2 * IQR(ras_tmp[[gene]])
-#   ystep <- (ymax-ymin)/10
-#   p2 <- p1+ stat_pvalue_manual(tukeydf, label = "p.signif", 
-#     y.position = c(ymax+0.1*ystep, ymax+1.1*ystep, ymax+2.1*ystep))
-#   plotlist[[gene]] <- p2
-# }
-# # create a plot with normal, tumor and stage I
-# plot_all <- cowplot::plot_grid(plotlist=plotlist,
-#                                 nrow=ceiling(sqrt(length(plotlist))))
-# figfile <- file.path(figfolder, "tukey_grid.pdf")
-# ggsave(figfile, plot=plot_all, width=20, height=20, limitsize = F)
